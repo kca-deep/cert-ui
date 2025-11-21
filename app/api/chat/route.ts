@@ -6,6 +6,10 @@ const DIFY_API_KEY = process.env.DIFY_API_KEY || '';
 export async function POST(request: NextRequest) {
   const { message, conversationId } = await request.json();
 
+  console.log('[Dify API] URL:', DIFY_API_URL);
+  console.log('[Dify API] Key exists:', !!DIFY_API_KEY);
+  console.log('[Dify API] Message:', message);
+
   const response = await fetch(`${DIFY_API_URL}/chat-messages`, {
     method: 'POST',
     headers: {
@@ -61,6 +65,11 @@ export async function POST(request: NextRequest) {
 
               try {
                 const parsed = JSON.parse(data);
+                if (parsed.event === 'error') {
+                  console.log('[Dify API] ERROR:', JSON.stringify(parsed));
+                } else {
+                  console.log('[Dify API] Event:', parsed.event);
+                }
 
                 // conversation_id 저장
                 if (parsed.conversation_id) {

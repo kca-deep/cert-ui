@@ -140,3 +140,35 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Dark theme prose overrides */
+.prose-invert pre {
+  background-color: #1a1a1a !important;
+}
+
+.prose-invert code {
+  background-color: #2f2f2f !important;
+  color: #e5e5e5 !important;
+}
+
+.prose-invert pre code {
+  background-color: transparent !important;
+}
+
+.prose-invert table {
+  background-color: transparent !important;
+}
+
+.prose-invert th {
+  background-color: #2f2f2f !important;
+}
+
+.prose-invert td {
+  background-color: transparent !important;
+  border-color: #424242 !important;
+}
+
+.prose-invert blockquote {
+  background-color: transparent !important;
+  border-left-color: #10a37f !important;
+}
