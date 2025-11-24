@@ -18,10 +18,68 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { sendMessageStream, Message } from '@/lib/dify';
-import { Send, MoreVertical, RotateCcw, Download, MessageSquare, Bot, Loader2 } from 'lucide-react';
+import { Send, MoreVertical, RotateCcw, Download, MessageSquare, Bot, Loader2, AlertCircle } from 'lucide-react';
 import { KcaLogo } from '@/components/kca-logo';
 import { ModeToggle } from '@/components/mode-toggle';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import rehypeHighlight from 'rehype-highlight';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+
+// Custom components for ReactMarkdown
+const markdownComponents = {
+  // Blockquote as Alert
+  blockquote: ({ children, ...props }: React.HTMLAttributes<HTMLElement>) => (
+    <Alert className="my-4">
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription>{children}</AlertDescription>
+    </Alert>
+  ),
+  // Inline code as Badge
+  code: ({ inline, className, children, ...props }: any) => {
+    if (inline) {
+      return (
+        <Badge variant="secondary" className="text-xs font-mono">
+          {children}
+        </Badge>
+      );
+    }
+    // Block code will be handled by pre > code
+    return <code className={className} {...props}>{children}</code>;
+  },
+  // Table styling
+  table: ({ children, ...props }: React.HTMLAttributes<HTMLTableElement>) => (
+    <div className="my-4 overflow-x-auto">
+      <table className="w-full border-collapse border border-prose-table-border" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children, ...props }: React.HTMLAttributes<HTMLTableCellElement>) => (
+    <th className="border border-prose-table-border bg-prose-th-bg px-4 py-2 text-left font-semibold" {...props}>
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }: React.HTMLAttributes<HTMLTableCellElement>) => (
+    <td className="border border-prose-table-border px-4 py-2" {...props}>
+      {children}
+    </td>
+  ),
+  // Links with styling
+  a: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary underline underline-offset-4 hover:text-primary/80"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+};
 
 export function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -263,7 +321,13 @@ export function Chat() {
                     </div>
                     <div className="flex-1 flex flex-col gap-1">
                       <div className="prose prose-sm dark:prose-invert max-w-none text-foreground break-words">
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkBreaks]}
+                          rehypePlugins={[rehypeHighlight]}
+                          components={markdownComponents}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
                       </div>
                       <span className="text-xs text-muted-foreground ml-1">
                         {message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
@@ -331,7 +395,15 @@ export function Chat() {
 const StreamingMessage = ({ content }: { content: string }) => {
   const renderedMarkdown = useMemo(() => {
     if (!content) return null;
-    return <ReactMarkdown>{content}</ReactMarkdown>;
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkBreaks]}
+        rehypePlugins={[rehypeHighlight]}
+        components={markdownComponents}
+      >
+        {content}
+      </ReactMarkdown>
+    );
   }, [content]);
 
   return (
