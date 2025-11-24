@@ -6,10 +6,6 @@ const DIFY_API_KEY = process.env.DIFY_API_KEY || '';
 export async function POST(request: NextRequest) {
   const { message, conversationId } = await request.json();
 
-  console.log('[Dify API] URL:', DIFY_API_URL);
-  console.log('[Dify API] Key exists:', !!DIFY_API_KEY);
-  console.log('[Dify API] Message:', message);
-
   const response = await fetch(`${DIFY_API_URL}/chat-messages`, {
     method: 'POST',
     headers: {
@@ -23,6 +19,7 @@ export async function POST(request: NextRequest) {
       user: 'default-user',
       ...(conversationId && { conversation_id: conversationId }),
     }),
+    signal: AbortSignal.timeout(60000),
   });
 
   if (!response.ok) {
@@ -36,7 +33,6 @@ export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
-  let fullAnswer = '';
   let lastConversationId = conversationId || '';
 
   const stream = new ReadableStream({
@@ -65,30 +61,33 @@ export async function POST(request: NextRequest) {
 
               try {
                 const parsed = JSON.parse(data);
-                if (parsed.event === 'error') {
-                  console.log('[Dify API] ERROR:', JSON.stringify(parsed));
-                } else {
-                  console.log('[Dify API] Event:', parsed.event);
-                }
 
                 // conversation_id 저장
                 if (parsed.conversation_id) {
                   lastConversationId = parsed.conversation_id;
                 }
 
-                // 메시지 이벤트 처리 (message, agent_message)
+                // 메시지 이벤트 처리 (message, agent_message) - delta만 전송
                 if (parsed.event === 'message' || parsed.event === 'agent_message') {
-                  fullAnswer += parsed.answer || '';
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                    answer: fullAnswer,
-                    conversationId: lastConversationId,
-                  })}\n\n`));
+                  const delta = parsed.answer || '';
+                  if (delta) {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                      delta,
+                      conversationId: lastConversationId,
+                    })}\n\n`));
+                  }
                 }
                 // 메시지 종료 이벤트
                 else if (parsed.event === 'message_end') {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                     done: true,
                     conversationId: lastConversationId,
+                  })}\n\n`));
+                }
+                // 에러 이벤트
+                else if (parsed.event === 'error') {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    error: parsed.message || 'Unknown error',
                   })}\n\n`));
                 }
               } catch {
@@ -105,11 +104,13 @@ export async function POST(request: NextRequest) {
             try {
               const parsed = JSON.parse(data);
               if (parsed.event === 'message' || parsed.event === 'agent_message') {
-                fullAnswer += parsed.answer || '';
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                  answer: fullAnswer,
-                  conversationId: lastConversationId,
-                })}\n\n`));
+                const delta = parsed.answer || '';
+                if (delta) {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    delta,
+                    conversationId: lastConversationId,
+                  })}\n\n`));
+                }
               }
             } catch {
               // Skip

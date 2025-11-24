@@ -46,15 +46,24 @@ export async function sendMessageStream(
           if (data.conversationId) {
             lastConversationId = data.conversationId;
           }
+          if (data.error) {
+            throw new Error(data.error);
+          }
           if (data.done) {
             completed = true;
             onComplete(data.conversationId || lastConversationId, fullAnswer);
-          } else if (data.answer) {
-            fullAnswer = data.answer;
+          } else if (data.delta) {
+            // delta를 누적하여 전체 답변 구성
+            fullAnswer += data.delta;
             onChunk(fullAnswer);
           }
-        } catch {
-          // Skip invalid JSON
+        } catch (e) {
+          // JSON 파싱 에러는 무시, 다른 에러는 throw
+          if (e instanceof SyntaxError) {
+            // Skip invalid JSON
+          } else {
+            throw e;
+          }
         }
       }
     }

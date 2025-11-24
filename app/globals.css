@@ -37,6 +37,15 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --chat-bubble: oklch(0.95 0 0);
+  --chat-bubble-user: oklch(0.92 0.02 250);
+  --chat-ai-bg: oklch(0.42 0.19 174);
+  --prose-code-bg: oklch(0.92 0 0);
+  --prose-code-text: oklch(0.2 0 0);
+  --prose-pre-bg: oklch(0.94 0 0);
+  --prose-table-border: oklch(0.85 0 0);
+  --prose-th-bg: oklch(0.92 0 0);
+  --prose-blockquote-border: oklch(0.42 0.19 174);
   --font-sans: var(--font-noto-sans-kr), var(--font-inter), system-ui, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: monospace;
@@ -77,6 +86,15 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+  --chat-bubble: oklch(0.2 0 0);
+  --chat-bubble-user: oklch(0.185 0 0);
+  --chat-ai-bg: oklch(0.42 0.19 174);
+  --prose-code-bg: oklch(0.185 0 0);
+  --prose-code-text: oklch(0.9 0 0);
+  --prose-pre-bg: oklch(0.1 0 0);
+  --prose-table-border: oklch(0.26 0 0);
+  --prose-th-bg: oklch(0.185 0 0);
+  --prose-blockquote-border: oklch(0.42 0.19 174);
 }
 
 @theme inline {
@@ -112,6 +130,15 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-chat-bubble: var(--chat-bubble);
+  --color-chat-bubble-user: var(--chat-bubble-user);
+  --color-chat-ai-bg: var(--chat-ai-bg);
+  --color-prose-code-bg: var(--prose-code-bg);
+  --color-prose-code-text: var(--prose-code-text);
+  --color-prose-pre-bg: var(--prose-pre-bg);
+  --color-prose-table-border: var(--prose-table-border);
+  --color-prose-th-bg: var(--prose-th-bg);
+  --color-prose-blockquote-border: var(--prose-blockquote-border);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -141,14 +168,46 @@
   }
 }
 
+/* Prose overrides for light and dark mode */
+.prose pre {
+  background-color: var(--color-prose-pre-bg) !important;
+}
+
+.prose code {
+  background-color: var(--color-prose-code-bg) !important;
+  color: var(--color-prose-code-text) !important;
+}
+
+.prose pre code {
+  background-color: transparent !important;
+}
+
+.prose table {
+  background-color: transparent !important;
+}
+
+.prose th {
+  background-color: var(--color-prose-th-bg) !important;
+}
+
+.prose td {
+  background-color: transparent !important;
+  border-color: var(--color-prose-table-border) !important;
+}
+
+.prose blockquote {
+  background-color: transparent !important;
+  border-left-color: var(--color-prose-blockquote-border) !important;
+}
+
 /* Dark theme prose overrides */
 .prose-invert pre {
-  background-color: #1a1a1a !important;
+  background-color: var(--color-prose-pre-bg) !important;
 }
 
 .prose-invert code {
-  background-color: #2f2f2f !important;
-  color: #e5e5e5 !important;
+  background-color: var(--color-prose-code-bg) !important;
+  color: var(--color-prose-code-text) !important;
 }
 
 .prose-invert pre code {
@@ -160,15 +219,15 @@
 }
 
 .prose-invert th {
-  background-color: #2f2f2f !important;
+  background-color: var(--color-prose-th-bg) !important;
 }
 
 .prose-invert td {
   background-color: transparent !important;
-  border-color: #424242 !important;
+  border-color: var(--color-prose-table-border) !important;
 }
 
 .prose-invert blockquote {
   background-color: transparent !important;
-  border-left-color: #10a37f !important;
+  border-left-color: var(--color-prose-blockquote-border) !important;
 }

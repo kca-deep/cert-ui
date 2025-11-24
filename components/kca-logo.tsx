@@ -1,16 +1,16 @@
-import { FileText } from 'lucide-react';
-
 export function KcaLogo({ className }: { className?: string }) {
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#10a37f]">
-        <FileText className="h-4 w-4 text-white" />
-      </div>
-      <div className="flex flex-col">
-        <span className="text-base font-semibold leading-tight text-white">
-          국가기술자격검정
+    <div className={`flex flex-col ${className}`}>
+      <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-chart-1 bg-clip-text text-transparent leading-none">
+        KCA
+      </span>
+      <div className="flex items-center gap-0.5">
+        <span className="text-sm font-bold tracking-tight text-foreground leading-none">
+          CERT
         </span>
-        <span className="text-xs text-gray-400">AI 상담</span>
+        <span className="text-sm font-bold tracking-tight text-foreground leading-none">
+          -AI
+        </span>
       </div>
     </div>
   );

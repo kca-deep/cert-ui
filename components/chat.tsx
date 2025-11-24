@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,6 +20,7 @@ import {
 import { sendMessageStream, Message } from '@/lib/dify';
 import { Send, MoreVertical, RotateCcw, Download, MessageSquare, Bot, Loader2 } from 'lucide-react';
 import { KcaLogo } from '@/components/kca-logo';
+import { ModeToggle } from '@/components/mode-toggle';
 import ReactMarkdown from 'react-markdown';
 
 export function Chat() {
@@ -40,8 +41,41 @@ export function Chat() {
     }
   }, [isLoading]);
 
+  // Cleanup throttle timer on unmount
+  useEffect(() => {
+    return () => {
+      if (throttleTimerRef.current) {
+        clearTimeout(throttleTimerRef.current);
+      }
+    };
+  }, []);
+
   const [streamingContent, setStreamingContent] = useState('');
   const streamingContentRef = useRef('');
+  const throttleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUpdateTimeRef = useRef(0);
+
+  // Throttled update function (100ms 간격)
+  const updateStreamingContent = useCallback((text: string) => {
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+
+    streamingContentRef.current = text;
+
+    // 100ms 이내에 업데이트가 있었으면 throttle
+    if (timeSinceLastUpdate < 100) {
+      if (throttleTimerRef.current) {
+        clearTimeout(throttleTimerRef.current);
+      }
+      throttleTimerRef.current = setTimeout(() => {
+        setStreamingContent(streamingContentRef.current);
+        lastUpdateTimeRef.current = Date.now();
+      }, 100 - timeSinceLastUpdate);
+    } else {
+      setStreamingContent(text);
+      lastUpdateTimeRef.current = now;
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,16 +93,21 @@ export function Chat() {
     setIsLoading(true);
     setStreamingContent('');
     streamingContentRef.current = '';
+    lastUpdateTimeRef.current = 0;
 
     try {
       await sendMessageStream(
         input,
         conversationId,
         (text) => {
-          setStreamingContent(text);
-          streamingContentRef.current = text;
+          updateStreamingContent(text);
         },
         (newConversationId, finalAnswer) => {
+          // 마지막 업데이트 강제 적용
+          if (throttleTimerRef.current) {
+            clearTimeout(throttleTimerRef.current);
+            throttleTimerRef.current = null;
+          }
           setConversationId(newConversationId);
           setIsLoading(false);
           setStreamingContent('');
@@ -94,6 +133,10 @@ export function Chat() {
       );
     } catch (error) {
       console.error('Error:', error);
+      if (throttleTimerRef.current) {
+        clearTimeout(throttleTimerRef.current);
+        throttleTimerRef.current = null;
+      }
       setIsLoading(false);
       setStreamingContent('');
       const errorMessage: Message = {
@@ -133,46 +176,49 @@ export function Chat() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-[#212121]">
+    <div className="flex h-full w-full flex-col bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-[#2f2f2f] px-4 py-3 bg-[#212121]">
+      <div className="sticky top-0 z-10 border-b border-border px-4 py-3 bg-background">
       <div className="mx-auto max-w-3xl flex items-center justify-between">
         <KcaLogo />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-[#2f2f2f] focus:outline-none focus:ring-2 focus:ring-white/20 rounded-lg">
-              <MoreVertical className="h-4 w-4 text-gray-400" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-[#2f2f2f] border-[#424242] text-gray-200">
-            <DropdownMenuItem onClick={handleReset} className="hover:bg-[#424242] focus:bg-[#424242]">
-              <RotateCcw className="mr-2 h-4 w-4" />
-              대화 초기화
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-[#424242]" />
-            <DropdownMenuItem onClick={handleExport} disabled={messages.length === 0} className="hover:bg-[#424242] focus:bg-[#424242]">
-              <Download className="mr-2 h-4 w-4" />
-              대화 내보내기
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring/20 rounded-lg">
+                <MoreVertical className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleReset}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                대화 초기화
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleExport} disabled={messages.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                대화 내보내기
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 bg-[#212121]">
-        <div className="mx-auto max-w-3xl px-4 py-6 bg-[#212121]">
+      <ScrollArea className="flex-1 bg-background">
+        <div className="mx-auto max-w-3xl px-4 py-6 bg-background">
           <div className="space-y-4">
             {messages.length === 0 && (
               <div className="flex flex-col items-center gap-6 py-12">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg">
-                  <MessageSquare className="h-8 w-8 text-[#212121]" />
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg">
+                  <MessageSquare className="h-8 w-8 text-primary-foreground" />
                 </div>
                 <div className="text-center">
-                  <h2 className="text-xl font-semibold text-white mb-2">
+                  <h2 className="text-xl font-semibold text-foreground mb-2">
                     무엇을 도와드릴까요?
                   </h2>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     국가기술자격검정에 대해 궁금한 점을 질문해주세요.
                   </p>
                 </div>
@@ -186,7 +232,7 @@ export function Chat() {
                     <Button
                       key={question}
                       variant="outline"
-                      className="h-auto whitespace-normal text-left px-4 py-3 text-sm text-gray-300 bg-[#2f2f2f] border-[#424242] hover:bg-[#424242] hover:border-[#525252] hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white/20"
+                      className="h-auto whitespace-normal text-left px-4 py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring/20"
                       onClick={() => {
                         setInput(question);
                         textareaRef.current?.focus();
@@ -203,23 +249,23 @@ export function Chat() {
               <div key={message.id}>
                 {message.role === 'user' ? (
                   <div className="flex flex-col items-end gap-1">
-                    <div className="max-w-[80%] rounded-3xl bg-[#2f2f2f] px-4 py-2.5 text-white">
+                    <div className="max-w-[80%] rounded-3xl bg-chat-bubble-user px-4 py-2.5 text-foreground">
                       <p className="whitespace-pre-wrap text-sm">{message.content}</p>
                     </div>
-                    <span className="text-xs text-gray-500 mr-1">
+                    <span className="text-xs text-muted-foreground mr-1">
                       {message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 ) : (
                   <div className="flex gap-3">
-                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#10a37f] flex items-center justify-center">
+                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-chat-ai-bg flex items-center justify-center">
                       <Bot className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1 flex flex-col gap-1">
-                      <div className="prose prose-sm prose-invert max-w-none text-gray-200 break-words">
+                      <div className="prose prose-sm dark:prose-invert max-w-none text-foreground break-words">
                         <ReactMarkdown>{message.content}</ReactMarkdown>
                       </div>
-                      <span className="text-xs text-gray-500 ml-1">
+                      <span className="text-xs text-muted-foreground ml-1">
                         {message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -229,27 +275,7 @@ export function Chat() {
             ))}
 
             {isLoading && (
-              <div className="flex gap-3">
-                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#10a37f] flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-white" />
-                </div>
-                <div className="flex-1">
-                  {streamingContent ? (
-                    <div className="prose prose-sm prose-invert max-w-none text-gray-200 break-words">
-                      <ReactMarkdown>{streamingContent}</ReactMarkdown>
-                      <span className="inline-block w-2 h-5 bg-gray-400 animate-pulse ml-1 rounded-sm" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 py-2">
-                      <span className="flex gap-1">
-                        <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <StreamingMessage content={streamingContent} />
             )}
             <div ref={scrollRef} />
           </div>
@@ -257,10 +283,10 @@ export function Chat() {
       </ScrollArea>
 
       {/* Input */}
-      <div className="bg-[#212121] px-4 py-3">
+      <div className="bg-background px-4 py-3">
         <div className="mx-auto max-w-3xl">
           <form onSubmit={handleSubmit} className="relative">
-            <div className="rounded-2xl border border-[#424242] bg-[#2f2f2f] overflow-hidden focus-within:border-[#525252] transition-all">
+            <div className="rounded-2xl border border-input bg-chat-bubble overflow-hidden focus-within:border-ring transition-all">
               <Textarea
                 ref={textareaRef}
                 value={input}
@@ -268,7 +294,7 @@ export function Chat() {
                 onKeyDown={handleKeyDown}
                 placeholder="메시지를 입력하세요..."
                 disabled={isLoading}
-                className="min-h-[52px] max-h-32 resize-none border-0 bg-transparent px-4 py-3 text-sm text-white placeholder:text-gray-500 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                className="min-h-[52px] max-h-32 resize-none border-0 bg-transparent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
                 rows={1}
               />
               <div className="flex items-center justify-end px-3 py-2">
@@ -280,19 +306,19 @@ export function Chat() {
                       size="icon"
                       className={`h-8 w-8 rounded-full transition-all duration-200 ${
                         input.trim()
-                          ? 'bg-white hover:bg-gray-200 text-[#212121]'
-                          : 'bg-[#424242] text-gray-500'
-                      } disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-white/20`}
+                          ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                          : 'bg-muted text-muted-foreground'
+                      } disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring/20`}
                     >
                       <Send className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-[#2f2f2f] text-white border-[#424242]">메시지 전송</TooltipContent>
+                  <TooltipContent>메시지 전송</TooltipContent>
                 </Tooltip>
               </div>
             </div>
           </form>
-          <p className="text-center text-xs text-gray-500 mt-2">
+          <p className="text-center text-xs text-muted-foreground mt-2">
             AI 챗봇은 실수를 할 수 있습니다. 중요한 정보는 재차 확인하세요.
           </p>
         </div>
@@ -300,3 +326,35 @@ export function Chat() {
     </div>
   );
 }
+
+// Memoized streaming message component to reduce re-renders
+const StreamingMessage = ({ content }: { content: string }) => {
+  const renderedMarkdown = useMemo(() => {
+    if (!content) return null;
+    return <ReactMarkdown>{content}</ReactMarkdown>;
+  }, [content]);
+
+  return (
+    <div className="flex gap-3">
+      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-chat-ai-bg flex items-center justify-center">
+        <Bot className="h-4 w-4 text-white" />
+      </div>
+      <div className="flex-1">
+        {content ? (
+          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground break-words">
+            {renderedMarkdown}
+            <span className="inline-block w-2 h-5 bg-muted-foreground animate-pulse ml-1 rounded-sm" />
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 py-2">
+            <span className="flex gap-1">
+              <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
