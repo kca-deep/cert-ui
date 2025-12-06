@@ -432,7 +432,7 @@ export function Chat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="KCA 자격검정 관련 궁금한 사항을 물어보세요.                    (예시) 정보보안기사 시험정보"
+                placeholder="입력하신 내용은 인공지능(AI)을 통해 자동 분석 및 학습되므로, 개인정보 및 민감정보는 입력하지 말아주세요."
                 disabled={isLoading}
                 className="min-h-[52px] max-h-32 resize-none border-0 bg-transparent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
                 rows={1}
