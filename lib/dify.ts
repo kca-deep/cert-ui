@@ -3,13 +3,15 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  duration?: number; // 답변 소요 시간 (초)
 }
 
 export async function sendMessageStream(
   message: string,
   conversationId: string | undefined,
   onChunk: (text: string) => void,
-  onComplete: (conversationId: string, finalAnswer: string) => void
+  onComplete: (conversationId: string, finalAnswer: string) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await fetch('/api/chat', {
     method: 'POST',
@@ -17,6 +19,7 @@ export async function sendMessageStream(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ message, conversationId }),
+    signal,
   });
 
   if (!response.ok) {
